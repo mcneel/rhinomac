@@ -5,51 +5,36 @@
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{89EDADB3-3D68-4C7E-85DC-62B95972E226}</ProjectGuid>
-    <OutputType>Library</OutputType>
-    <RootNamespace>RhinoMac</RootNamespace>
-    <AssemblyName>RhinoMac</AssemblyName>
-    <TargetFrameworkVersion>v2.0</TargetFrameworkVersion>
+    <ProjectGuid>{B41B4353-8D26-4DB7-8B7A-F0106EED3866}</ProjectGuid>
+    <OutputType>Exe</OutputType>
+    <RootNamespace>DebugStarterExe</RootNamespace>
+    <AssemblyName>DebugStarterExe</AssemblyName>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>True</DebugSymbols>
     <DebugType>full</DebugType>
     <Optimize>False</Optimize>
-    <OutputPath>..\..\..\..\Library\Developer\Xcode\DerivedData\MacRhino-fxswjfvtztmahtbrorxgsjkmlveu\Build\Products\Debug\Rhinoceros.app\Contents\Resources</OutputPath>
+    <OutputPath>bin\Debug</OutputPath>
     <DefineConstants>DEBUG;</DefineConstants>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
+    <Commandlineparameters>-app_path="/Users/john/Library/Developer/Xcode/DerivedData/MacRhino-fxswjfvtztmahtbrorxgsjkmlveu/Build/Products/Debug/Rhinoceros.app/Contents/MacOS/Rhinoceros"</Commandlineparameters>
     <ConsolePause>False</ConsolePause>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-    <DebugType>full</DebugType>
+    <DebugType>none</DebugType>
     <Optimize>True</Optimize>
-    <OutputPath>Release\</OutputPath>
+    <OutputPath>bin\Release</OutputPath>
     <ErrorReport>prompt</ErrorReport>
     <WarningLevel>4</WarningLevel>
-    <ConsolePause>False</ConsolePause>
-    <DebugSymbols>True</DebugSymbols>
+    <Externalconsole>True</Externalconsole>
   </PropertyGroup>
   <ItemGroup>
     <Reference Include="System" />
-    <Reference Include="RhinoCommon">
-      <HintPath>..\rhinocommon\dotnet\bin\Mono\RhinoCommon.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="MonoMac">
-      <HintPath>..\monomac\src\MonoMac.dll</HintPath>
-      <Private>False</Private>
-    </Reference>
-    <Reference Include="System.Drawing" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Interop.cs" />
-    <Compile Include="UnsafeNativeMethods.cs" />
-    <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Window.cs" />
+    <Compile Include="Main.cs" />
+    <Compile Include="AssemblyInfo.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <ItemGroup>
-    <Folder Include="Properties\" />
-  </ItemGroup>
 </Project>

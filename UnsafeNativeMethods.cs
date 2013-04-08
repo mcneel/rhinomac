@@ -12,11 +12,51 @@ namespace RhinoMac
     public double height;
   }
 
+  [StructLayout(LayoutKind.Sequential)]
+  struct CColor
+  {
+    public CColor(System.Drawing.Color color)
+    {
+      redComponent = greenComponent = blueComponent = 0.0;
+      includesAlpha = true;
+      alphaComponent = 1.0;
+      Set (color, false);
+    }
+    public double redComponent;
+    public double greenComponent;
+    public double blueComponent;
+    public double alphaComponent;
+    public bool includesAlpha;
+    int ConvertFraction(double value)
+    {
+      return ((int)(Math.Max (0.0, Math.Min (1.0, value)) * 255.0));
+    }
+    public System.Drawing.Color ToSystemColor()
+    {
+      return System.Drawing.Color.FromArgb (includesAlpha ? ConvertFraction(alphaComponent) : 255,
+                                            ConvertFraction(redComponent),
+                                            ConvertFraction(greenComponent),
+                                            ConvertFraction(blueComponent));
+    }
+    double ToFraction(int value)
+    {
+      return (value * 0.003921568627450980392156862745);
+    }
+    public void Set(System.Drawing.Color color, bool includeAlpha)
+    {
+      redComponent = ToFraction (color.R);
+      greenComponent = ToFraction (color.G);
+      blueComponent = ToFraction (color.B);
+      includesAlpha = includeAlpha;
+      alphaComponent = includeAlpha ? ToFraction (color.A) : 1.0;
+    }
+  }
+
   [System.Security.SuppressUnmanagedCodeSecurity]
   static class UnsafeNativeMethods
   {
     const string nativelib = "__Internal";
-    
+
     [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void RUI_RegisterBoolCallbacks(Interop.GetBoolValueCallback getFunc,
                                                         Interop.SetBoolValueCallback setFunc);
@@ -28,12 +68,22 @@ namespace RhinoMac
     [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void RUI_RegisterNumberCallbacks(Interop.GetNumberValueCallback getFunc,
                                                           Interop.SetNumberValueCallback setFunc);
-    
+
+    [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void RUI_RegisterColorCallbacks(Interop.GetColorValueCallback getFunc,
+                                                         Interop.SetColorValueCallback setFunc);
+
     [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void RUI_RegisterActionCallback (Interop.PerformActionCallback actionFunc);
 
     [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
-    public static extern void RUI_RegisterWindowWillCloseCallback(Interop.WindowWillCloseCallback willCloseFunc);
+    public static extern void RUI_RegisterWindowWillCloseCallback(Interop.WindowCallbackReturnVoid willCloseFunc);
+
+    [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
+		public static extern void RUI_RegisterWindowShouldCloseCallback (Interop.WindowCallbackReturnInt shouldCloseFunc);
+
+    [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
+    public static extern void RUI_CloseWindow (IntPtr windowId);
 
     [DllImport(nativelib, CallingConvention = CallingConvention.Cdecl)]
     public static extern void RUI_RegisterPropertyTypeCallback(Interop.PropertyTypeCallback propertyTypeFunc);
@@ -70,7 +120,6 @@ namespace RhinoMac
 
     [DllImport (LIBOBJC_DYLIB, EntryPoint="sel_registerName")]
     public extern static IntPtr sel_registerName (string name);
-
   }
 }
 
