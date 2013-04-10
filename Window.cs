@@ -23,6 +23,7 @@ namespace RhinoMac
   ///   ulong TreeNodeCount(string name, ref ulong[] indexes, ulong length)
   /// 
   /// </summary>
+  [CLSCompliant(false)]
   public class Window : MonoMac.AppKit.NSWindow
   {
     IntPtr m_pDNWindowController = IntPtr.Zero; // DNWindowController*

@@ -12,10 +12,7 @@ namespace RhinoMac
     {
       if( !g_initialized )
       {
-        UnsafeNativeMethods.RUI_RegisterColorCallbacks(m_getcolor_callback, m_setcolor_callback);
-        UnsafeNativeMethods.RUI_RegisterNumberCallbacks(m_getnumber_callback, m_setnumber_callback);
-        UnsafeNativeMethods.RUI_RegisterBoolCallbacks(m_getbool_callback, m_setbool_callback);
-        UnsafeNativeMethods.RUI_RegisterStringCallbacks(m_getstring_callback, m_setstring_callback);
+        UnsafeNativeMethods.RUI_RegisterValueCallbacks(m_getvalue_callback, m_setvalue_callback);
         UnsafeNativeMethods.RUI_RegisterActionCallback(m_perform_action);
         UnsafeNativeMethods.RUI_RegisterWindowWillCloseCallback(m_willclose_callback);
         UnsafeNativeMethods.RUI_RegisterWindowShouldCloseCallback(m_shouldclose_callback);
@@ -34,15 +31,9 @@ namespace RhinoMac
       m_all_windows.Add(pController, window);
     }
 
-    internal delegate CColor GetColorValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
-    internal delegate void SetColorValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name, CColor value);
-    internal delegate double GetNumberValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
-    internal delegate void SetNumberValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name, double value);
-    internal delegate int GetBoolValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
-    internal delegate void SetBoolValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name, int value);
-    [return: MarshalAs(UnmanagedType.LPWStr)]
-    internal delegate string GetStringValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
-    internal delegate void SetStringValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name, [MarshalAs(UnmanagedType.LPWStr)]string value);
+    internal delegate IntPtr GetValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
+    internal delegate void SetValueCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name, IntPtr value);
+
     internal delegate void PerformActionCallback(IntPtr handle, [MarshalAs(UnmanagedType.LPWStr)]string name);
     internal delegate void WindowCallbackReturnVoid(IntPtr handle);
     internal delegate int WindowCallbackReturnInt(IntPtr handle);
@@ -52,174 +43,113 @@ namespace RhinoMac
     static Dictionary<IntPtr, INotifyPropertyChanged> m_all_controllers = new Dictionary<IntPtr, INotifyPropertyChanged>();
     static Dictionary<IntPtr, Window> m_all_windows = new Dictionary<IntPtr, Window>();
 
-    static GetColorValueCallback m_getcolor_callback = GetColorCalledFromC;
-    static SetColorValueCallback m_setcolor_callback = SetColorCalledFromC;
-    static GetNumberValueCallback m_getnumber_callback = GetNumberCalledFromC;
-    static SetNumberValueCallback m_setnumber_callback = SetNumberCalledFromC;
-    static GetBoolValueCallback m_getbool_callback = GetBoolCalledFromC;
-    static SetBoolValueCallback m_setbool_callback = SetBoolCalledFromC;
-    static GetStringValueCallback m_getstring_callback = GetStringCalledFromC;
-    static SetStringValueCallback m_setstring_callback = SetStringCalledFromC;
+    static GetValueCallback m_getvalue_callback = GetValueCalledFromC;
+    static SetValueCallback m_setvalue_callback = SetValueCalledFromC;
     static PerformActionCallback m_perform_action = PerformActionCalledFromC;
     static WindowCallbackReturnVoid m_willclose_callback = WindowWillCloseCalledFromC;
     static WindowCallbackReturnInt m_shouldclose_callback = WindowShouldCloseCalledFromC;
 
-    static CColor GetColorCalledFromC(IntPtr pController, string name)
+    static IntPtr GetValueCalledFromC(IntPtr pController, string name)
     {
-      var rc = System.Drawing.Color.Black;
       INotifyPropertyChanged item;
       var prop = GetPropertyFromControler (pController, name, out item);
       if (null !=  prop)
       {
-        var type = prop.PropertyType;
-        if (type.Equals(typeof(System.Drawing.Color)))
-          rc = (System.Drawing.Color)prop.GetValue(item, null);
-        else
-          throw new Exception("Value is not a color");
+        object p = prop.GetValue(item, null);
+        if( p is string )
+        {
+          var s = new MonoMac.Foundation.NSString(p as String);
+          return s.Handle;
+        }
+        if( p is bool )
+        {
+          var b = new MonoMac.Foundation.NSNumber((bool)p);
+          return b.Handle;
+        }
+        if( p is int )
+        {
+          var i = new MonoMac.Foundation.NSNumber((int)p);
+          return i.Handle;
+        }
+        if( p is double )
+        {
+          var d = new MonoMac.Foundation.NSNumber((double)p);
+          return d.Handle;
+        }
+        if( p is System.Drawing.Color )
+        {
+          System.Drawing.Color c = (System.Drawing.Color)p;
+          var clr = MonoMac.AppKit.NSColor.FromDeviceRgba(c.R/255.0, c.G/255.0, c.B/255.0, c.A/255.0);
+          return clr.Handle;
+        }
+
+        string msg = string.Format("Do not have binding for '{0}'\ntype = {1}",name, prop.PropertyType);
+        var alert = MonoMac.AppKit.NSAlert.WithMessage("GetValueCalledFromC with unknown type", null, null, null, msg);
+        alert.RunModal();
       }
-      return new CColor (rc);
+
+      return IntPtr.Zero;
     }
 
-    static double GetNumberCalledFromC(IntPtr pController, string name)
+    static void SetValueCalledFromC(IntPtr pController, string name, IntPtr pValue)
     {
-      double rc = 0;
       INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
+      var prop = GetPropertyFromControler (pController, name, out item);
+      if (null !=  prop && pValue!=IntPtr.Zero)
       {
+        var obj = new MonoMac.Foundation.NSObject(pValue);
         var type = prop.PropertyType;
-        if (type.Equals(typeof(ulong)))
-          rc = (double)((ulong)prop.GetValue(item, null));
-        else if (type.Equals(typeof(ushort)))
-          rc = (double)((ushort)prop.GetValue(item, null));
-        else if (type.Equals(typeof(double)))
-          rc = (double)prop.GetValue(item, null);
-        else if (type.Equals(typeof(float)))
-          rc = (double)((float)prop.GetValue(item, null));
-        else if (type.Equals(typeof(int)))
-          rc = (double)((int)prop.GetValue(item, null));
-        else if (type.Equals(typeof(decimal)))
-          rc = (double)((decimal)prop.GetValue(item, null));
-        else if (type.Equals(typeof(string)))
+        if( type.Equals(typeof(string)) )
         {
-          string s = (string)prop.GetValue(item, null);
-          if (!double.TryParse(s, out rc))
-            throw new Exception("Value is not a number");
+          prop.SetValue(item, obj.ToString(), null);
+        }
+        else if( type.Equals(typeof(bool)) )
+        {
+          var sel = new MonoMac.ObjCRuntime.Selector("boolValue");
+          if( obj.RespondsToSelector(sel) )
+          {
+            bool b = MonoMac.ObjCRuntime.Messaging.bool_objc_msgSend (pValue, sel.Handle);
+            prop.SetValue(item, b, null);
+          }
+        }
+        else if( type.Equals(typeof(int)) )
+        {
+          var sel = new MonoMac.ObjCRuntime.Selector("intValue");
+          if( obj.RespondsToSelector(sel) )
+          {
+            int i = MonoMac.ObjCRuntime.Messaging.int_objc_msgSend (pValue, sel.Handle);
+            prop.SetValue(item, i, null);
+          }
+        }
+        else if( type == typeof(double) )
+        {
+          var sel = new MonoMac.ObjCRuntime.Selector("doubleValue");
+          if( obj.RespondsToSelector(sel) )
+          {
+            double d = MonoMac.ObjCRuntime.Messaging.Double_objc_msgSend (pValue, sel.Handle);
+            prop.SetValue(item, d, null);
+          }
+        }
+        else if( type.Equals(typeof(System.Drawing.Color)) )
+        {
+          var sel = new MonoMac.ObjCRuntime.Selector("getRed:green:blue:alpha:");
+          if( obj.RespondsToSelector(sel) )
+          {
+            double red, green, blue, alpha;
+            MonoMac.ObjCRuntime.Messaging.void_objc_msgSend_out_Double_out_Double_out_Double_out_Double (pValue, sel.Handle, out red, out green, out blue, out alpha);
+            var c4f = new Rhino.Display.Color4f((float)red, (float)green, (float)blue, (float)alpha);
+            prop.SetValue(item, c4f.AsSystemColor(), null);
+          }
         }
         else
-          throw new Exception("Value is not a number");
-      }
-      return rc;
-    }
-    
-    static int GetBoolCalledFromC(IntPtr pController, string name)
-    {
-      int rc = 0;
-      INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
-      {
-        bool b = (bool)prop.GetValue(item, null);
-        rc = b?1:0;
-      }
-      return rc;
-    }
-    
-    static string GetStringCalledFromC(IntPtr pController, string name)
-    {
-      string rc = null;
-      INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
-      {
-        rc = prop.GetValue(item, null).ToString();
-      }
-      return (rc ?? string.Empty);
-    }
-
-    static void SetColorCalledFromC(IntPtr pController, string name, CColor value)
-    {
-      var item = GetControllerFromPointer (pController);
-      if (null != item)
-      {
-        var prop = item.GetType ().GetProperty (name);
-        if (prop != null)
         {
-          var type = prop.PropertyType;
-          if (type.Equals (typeof(System.Drawing.Color)))
-            prop.SetValue (item, value.ToSystemColor(), null);
-          else
-            throw new Exception("Value is not a color");
+          string msg = string.Format("Do not have binding for '{0}'\ntype = {1}",name, type);
+          var alert = MonoMac.AppKit.NSAlert.WithMessage("SetValueCalledFromC with unknown type", null, null, null, msg);
+          alert.RunModal();
         }
       }
     }
 
-    static void SetNumberCalledFromC(IntPtr pController, string name, double value)
-    {
-      INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
-      {
-        var type = prop.PropertyType;
-        if (type.Equals(typeof(double)))
-          prop.SetValue(item, value, null);
-        else if (type.Equals(typeof(float)))
-          prop.SetValue(item, (float)value, null);
-        else if (type.Equals(typeof(int)))
-          prop.SetValue(item, (int)value, null);
-        else if (type.Equals(typeof(decimal)))
-          prop.SetValue(item, new decimal(value), null);
-        else if (type.Equals(typeof(string)))
-          prop.SetValue(item, value.ToString(), null);
-        else
-          throw new Exception("Value is not a number");
-      }
-    }
-    
-    static void SetBoolCalledFromC(IntPtr pController, string name, int value)
-    {
-      INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
-        prop.SetValue(item, value!=0, null);
-    }
-    
-    static void SetStringCalledFromC(IntPtr pController, string name, string value)
-    {
-      INotifyPropertyChanged item;
-      var prop = GetPropertyFromControler(pController, name, out item);
-      if( prop!=null )
-      {
-        var type = prop.PropertyType;
-        if (type.Equals(typeof(double)))
-        {
-          double x;
-          if(double.TryParse(value, out x))
-            prop.SetValue(item, x, null);
-        }
-        else if (type.Equals(typeof(float)))
-        {
-          float x;
-          if(float.TryParse(value, out x))
-            prop.SetValue(item, x, null);
-        }
-        else if (type.Equals(typeof(int)))
-        {
-          int x;
-          if(int.TryParse(value, out x))
-            prop.SetValue(item, x, null);
-        }
-        else if (type.Equals(typeof(decimal)))
-        {
-          decimal x;
-          if(decimal.TryParse(value, out x))
-            prop.SetValue(item, x, null);
-        }
-        else
-          prop.SetValue(item, value, null);
-      }
-    }
-    
     static void PerformActionCalledFromC(IntPtr pController, string name)
     {
       if (name == "Cancel" || name == "OK")
@@ -262,14 +192,6 @@ namespace RhinoMac
           rc = (int)methodInfo.Invoke(controller, null);
       }
       return rc;
-    }
-
-    enum PropertyType : int
-    {
-      ruitypePropertyDoesNotExist = -1,
-      ruitypeUnknown = 0,
-      ruitypeBoolean,
-      ruitypeString,
     }
 
     static Window GetWindowFromController(IntPtr pController)
