@@ -4,7 +4,6 @@ using System.ComponentModel;
 using System.Reflection;
 using System.Runtime.InteropServices;
 
-
 namespace RhinoMac
 {
   /// <summary>
@@ -16,6 +15,7 @@ namespace RhinoMac
   /// "X" in the window, true == closed by "OK:", and false ==
   /// closed by "Cancel:".
   /// 
+
   /// The following methods will get called on the view model
   /// when appropriate if they exist and are public:
   ///   void WindowWillClose()
@@ -88,7 +88,56 @@ namespace RhinoMac
   	/// </summary>
     public void ShowModal()
     {
+      m_ShowModalList.Add (this);
       UnsafeNativeMethods.RUI_ShowModalWindow(ControllerHandle);
+      if (m_ShowModalList.Contains(this))
+        m_ShowModalList.Remove (this);
+    }
+    /// <summary>
+    /// Modal dialog stack used by PickPoint
+    /// </summary>
+    static List<Window>m_ShowModalList = new List<Window>();
+    /// <summary>
+    /// Picks the point.
+    /// </summary>
+    /// <param name="sender">Sender.</param>
+    /// <param name="pickPointDelegate">Pick point delegate.</param>
+    public void PushPickButton(object sender, EventHandler<EventArgs> pickPointDelegate)
+    {
+      if (null == pickPointDelegate)
+        return;
+      // Find this window in the modal list
+      // Windows get added to m_ShowModalList by Window.ShowModal(), find this
+      // window and work backwards to root
+      int index = m_ShowModalList.IndexOf (this);
+      var _controllers = new List<MonoMac.Foundation.NSObject> ();
+      for (var i = index; i >= 0; i--)
+      {
+        // Get the window to unhook and hide
+        var window = m_ShowModalList[i];
+        // Get the window controller
+        var controller = window.WindowController;
+        // Save the window controller so it can be used when the window is restored
+        _controllers.Add(controller);
+        // Unhook and hide the window
+        window.OrderOut (controller);
+      }
+      //
+      // Code from RhinoCommon
+      //
+      // Flush main window message pump
+      Rhino.RhinoApp.Wait();
+      // Set focus to the main Rhino window
+      Rhino.RhinoApp.SetFocusToMainWindow();
+      // Invoke the Get... call
+      pickPointDelegate(sender, EventArgs.Empty);
+      // Restore the unhooked and hidden windows in the opposite
+      // order of how they were hidden
+      for (var i = 0; i <= index; i++)
+      {
+        var item = m_ShowModalList [i];
+        item.MakeKeyAndOrderFront (_controllers[index-i]);
+      }
     }
   	/// <summary>
   	/// Show the window in a modeless state.
