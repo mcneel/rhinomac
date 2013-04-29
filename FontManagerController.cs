@@ -7,7 +7,7 @@ namespace RhinoMac
   /// Class used to display the font manager panel and get updates
   /// when the selected font changes.
   /// </summary>
-  class FontManagerController : MonoMac.AppKit.NSResponder, IDisposable
+  public class FontManagerController : MonoMac.AppKit.NSResponder, IDisposable
   {
     new public void Dispose()
     {
