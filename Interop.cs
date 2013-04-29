@@ -56,9 +56,14 @@ namespace RhinoMac
       if (null !=  prop)
       {
         object p = prop.GetValue(item, null);
+        // If value is null and the property type is a string
+        // then set p to a empty string so a valid NSString can 
+        // get returned
+        if (null == p && prop.PropertyType.IsAssignableFrom(typeof(System.String)))
+          p = string.Empty;
         if( p is string )
         {
-          var s = new MonoMac.Foundation.NSString(p as String);
+          var s = new MonoMac.Foundation.NSString(p as String ?? string.Empty);
           return s.Handle;
         }
         if( p is bool )
@@ -82,7 +87,21 @@ namespace RhinoMac
           var clr = MonoMac.AppKit.NSColor.FromDeviceRgba(c.R/255.0, c.G/255.0, c.B/255.0, c.A/255.0);
           return clr.Handle;
         }
-
+        if (p is string[])
+        {
+          var stringList = p as string[];
+          var array = MonoMac.Foundation.NSArray.FromStrings(stringList);
+          return array.Handle;
+        }
+        if (p is List<string>)
+        {
+          var stringList = p as List<string>;
+          var array = MonoMac.Foundation.NSArray.FromStrings(stringList.ToArray());
+          return array.Handle;
+        }
+        // Allow NSObjects to be passed directly to Rhino
+        if (p is MonoMac.Foundation.NSObject)
+          return (p as MonoMac.Foundation.NSObject).Handle;
         string msg = string.Format("Do not have binding for '{0}'\ntype = {1}",name, prop.PropertyType);
         var alert = MonoMac.AppKit.NSAlert.WithMessage("GetValueCalledFromC with unknown type", null, null, null, msg);
         alert.RunModal();
@@ -101,7 +120,7 @@ namespace RhinoMac
         var type = prop.PropertyType;
         if( type.Equals(typeof(string)) )
         {
-          prop.SetValue(item, obj.ToString(), null);
+          prop.SetValue(item, obj.ToString() ?? string.Empty, null);
         }
         else if( type.Equals(typeof(bool)) )
         {
@@ -140,6 +159,18 @@ namespace RhinoMac
             var c4f = new Rhino.Display.Color4f((float)red, (float)green, (float)blue, (float)alpha);
             prop.SetValue(item, c4f.AsSystemColor(), null);
           }
+        }
+//        else if (type.Equals(typeof(MonoMac.Foundation.NSIndexSet)))
+//        {
+//          //var test = MonoMac.ObjCRuntime.Runtime.GetNSObject(pValue);
+//          //var indexSet = Activator.CreateInstance (type, new object[] { pValue });
+//          var indexSet = new MonoMac.Foundation.NSIndexSet(pValue);
+//          prop.SetValue(item, indexSet, null);
+//        }
+        else if (typeof(MonoMac.Foundation.NSObject).IsAssignableFrom(type))
+        {
+          var setValue = Activator.CreateInstance (type, new object[] { pValue });
+          prop.SetValue(item, setValue, null);
         }
         else
         {
