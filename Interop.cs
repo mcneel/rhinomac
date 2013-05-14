@@ -71,6 +71,11 @@ namespace RhinoMac
           var b = new MonoMac.Foundation.NSNumber((bool)p);
           return b.Handle;
         }
+        if( p is bool? )
+        {
+          var b = new MonoMac.Foundation.NSNumber((bool)(p ?? false));
+          return b.Handle;
+        }
         if( p is int )
         {
           var i = new MonoMac.Foundation.NSNumber((int)p);
@@ -123,6 +128,15 @@ namespace RhinoMac
           prop.SetValue(item, obj.ToString() ?? string.Empty, null);
         }
         else if( type.Equals(typeof(bool)) )
+        {
+          var sel = new MonoMac.ObjCRuntime.Selector("boolValue");
+          if( obj.RespondsToSelector(sel) )
+          {
+            bool b = MonoMac.ObjCRuntime.Messaging.bool_objc_msgSend (pValue, sel.Handle);
+            prop.SetValue(item, b, null);
+          }
+        }
+        else if( type.Equals(typeof(bool?)) )
         {
           var sel = new MonoMac.ObjCRuntime.Selector("boolValue");
           if( obj.RespondsToSelector(sel) )
