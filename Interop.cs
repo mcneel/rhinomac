@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Runtime.InteropServices;
+using System.Reflection;
 
 namespace RhinoMac
 {
@@ -258,13 +259,13 @@ namespace RhinoMac
       controller = GetControllerFromPointer (pController);
       if (null != controller)
       {
-        var prop = controller.GetType().GetProperty(propertyName);
+        var prop = controller.GetType().GetProperty(propertyName, BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Public);
         if (null == prop && !string.IsNullOrEmpty(propertyName))
         {
           var prefix = propertyName.Substring(0, 1);
           var sufix = propertyName.Substring(1);
           propertyName = prefix.ToUpper() + sufix;
-          prop = controller.GetType().GetProperty(propertyName);
+          prop = controller.GetType().GetProperty(propertyName, BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Public);
         }
         var method = null == prop ? null : prop.GetGetMethod(false);
         if (null != prop && null != method && !method.IsStatic)
@@ -278,8 +279,8 @@ namespace RhinoMac
       controller = GetControllerFromPointer (pController);
       if (null != controller)
       {
-        var method = controller.GetType().GetMethod(methodName);
-        if (null != method && !method.IsStatic && method.IsPublic)
+        var method = controller.GetType().GetMethod(methodName, BindingFlags.NonPublic|BindingFlags.Instance|BindingFlags.Public);
+        if (null != method && !method.IsStatic)
           return method;
       }
       return null;
